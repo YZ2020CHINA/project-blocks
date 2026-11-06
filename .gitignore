@@ -1,0 +1,17 @@
+__pycache__/
+node_modules/
+.venv/
+.env
+.env.*
+!.env.example
+data/project.json
+data/*.tmp
+data/*.backup.json
+tests/*.png
+tests/*.json
+*.log
+tests/.validator-deps/
+integration/**/__pycache__/
+.runtime.json
+.initialize.lock
+*.bak

@@ -1,0 +1,10 @@
+{
+  "name": "project-blocks-local",
+  "interface": {"displayName": "项目积木工坊"},
+  "plugins": [{
+    "name": "project-blocks",
+    "source": {"source": "local", "path": "./integration/plugin"},
+    "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
+    "category": "Productivity"
+  }]
+}

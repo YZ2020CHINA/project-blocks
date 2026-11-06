@@ -1,0 +1,10 @@
+{
+  "title": "新项目 · 积木协作演示",
+  "nodes": [
+    {"id":"brief","title":"确认新项目需求","type":"prologue","summary":"把你的目标转为可验证的项目范围。","acceptance":["明确要解决的问题与用户场景"]},
+    {"id":"structure","title":"拆分模块与依赖","type":"route","summary":"按实际项目生成模块、资源和工序卡片。","acceptance":["各模块职责明确","前置依赖没有循环"]},
+    {"id":"build","title":"Codex 实施工序","type":"common","summary":"实现后记录真实文件、交付物与检查证据。","acceptance":["完成已确认的功能","更新关联文件与状态"]},
+    {"id":"verify","title":"验证与交付","type":"ending","summary":"依据实际结果验收项目。","acceptance":["主要使用流程通过验证","未完成事项有记录"]}
+  ],
+  "edges":[{"from":"brief","to":"structure"},{"from":"structure","to":"build"},{"from":"build","to":"verify"}]
+}

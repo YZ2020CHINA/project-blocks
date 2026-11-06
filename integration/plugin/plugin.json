@@ -1,0 +1,21 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "project-blocks",
+  "version": "1.2.0",
+  "description": "在本地 Codex 项目中建立和维护积木流程画布，协作管理模块、依赖、任务与验收。",
+  "author": {"name": "Azhou / YZ2020CHINA"},
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "项目积木工坊",
+        "shortDescription": "项目内的积木画布与 Codex 工序协作",
+        "longDescription": "基于 GalFlow 1.12。每个项目保存独立 JSON 和本地可视化程序，按实际需求生成模块、任务、依赖与验收卡片，并在 Codex 中打开。",
+        "developerName": "Azhou / YZ2020CHINA",
+        "category": "Productivity",
+        "capabilities": ["Read", "Write"],
+        "defaultPrompt": ["为当前项目建立积木可视化工程，并在 Codex 里打开。"],
+        "brandColor": "#778AFF"
+      }
+    }
+  }
+}

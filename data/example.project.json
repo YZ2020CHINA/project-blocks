@@ -1,0 +1,313 @@
+{
+  "title": "我的项目 · 工序搭建示例",
+  "version": "1.0",
+  "viewport": {
+    "x": 40,
+    "y": 80,
+    "scale": 0.55
+  },
+  "nodes": [
+    {
+      "id": "goal",
+      "title": "项目目标与范围",
+      "routeType": "prologue",
+      "color": "#9b8aff",
+      "x": 60,
+      "y": 80,
+      "characters": "你",
+      "location": "docs/brief.md",
+      "bgm": "项目需求说明",
+      "summary": "把项目拆成可组合的积木，让结构、执行顺序和交付结果一眼可见。",
+      "script": "先检查相关文件，按验收标准实施并记录实际结果。",
+      "image": "",
+      "choices": [
+        {
+          "id": "rel_0",
+          "text": "前置依赖",
+          "tag": "前置依赖",
+          "target": "design"
+        },
+        {
+          "id": "rel_1",
+          "text": "前置依赖",
+          "tag": "前置依赖",
+          "target": "schema"
+        }
+      ],
+      "workflow": {
+        "status": "done",
+        "priority": "P1",
+        "acceptance": [
+          "明确项目用户与主要使用场景",
+          "列出本次要交付的功能范围"
+        ],
+        "files": [
+          "docs/brief.md"
+        ],
+        "blockReason": ""
+      }
+    },
+    {
+      "id": "design",
+      "title": "画布与卡片模块",
+      "routeType": "route",
+      "color": "#72a8f8",
+      "x": 500,
+      "y": 80,
+      "characters": "Codex",
+      "location": "app/index.html, app/blocks.js, app/blocks.css",
+      "bgm": "可交互的项目画布",
+      "summary": "复用 GalFlow 的无限画布，搭建卡片、端口与分组交互。",
+      "script": "先检查相关文件，按验收标准实施并记录实际结果。",
+      "image": "",
+      "choices": [
+        {
+          "id": "rel_3",
+          "text": "前置依赖",
+          "tag": "前置依赖",
+          "target": "task-ui"
+        }
+      ],
+      "workflow": {
+        "status": "doing",
+        "priority": "P1",
+        "acceptance": [
+          "可以拖拽卡片与平移缩放画布",
+          "可以为卡片编辑目标、状态和文件"
+        ],
+        "files": [
+          "app/index.html",
+          "app/blocks.js",
+          "app/blocks.css"
+        ],
+        "blockReason": ""
+      }
+    },
+    {
+      "id": "schema",
+      "title": "工程数据与同步",
+      "routeType": "route",
+      "color": "#72a8f8",
+      "x": 500,
+      "y": 480,
+      "characters": "Codex",
+      "location": "data/project.json, server.py",
+      "bgm": "工程文件与本地服务",
+      "summary": "用 JSON 保存项目结构，支持 Codex 修改后回到画布查看。",
+      "script": "先检查相关文件，按验收标准实施并记录实际结果。",
+      "image": "",
+      "choices": [
+        {
+          "id": "rel_4",
+          "text": "前置依赖",
+          "tag": "前置依赖",
+          "target": "task-sync"
+        }
+      ],
+      "workflow": {
+        "status": "todo",
+        "priority": "P1",
+        "acceptance": [
+          "保存后重新打开不丢失卡片",
+          "外部修改与未保存画布冲突时能选择版本"
+        ],
+        "files": [
+          "data/project.json",
+          "server.py"
+        ],
+        "blockReason": ""
+      }
+    },
+    {
+      "id": "reference",
+      "title": "GalFlow 1.12 参考",
+      "routeType": "character",
+      "color": "#e6b66d",
+      "x": 60,
+      "y": 480,
+      "characters": "你",
+      "location": "galgame_script_editor 1.12.html",
+      "bgm": "画布基础工具",
+      "summary": "原有剧本整理工具提供卡片、连线、便签、分组和撤销引擎。",
+      "script": "先检查相关文件，按验收标准实施并记录实际结果。",
+      "image": "",
+      "choices": [
+        {
+          "id": "rel_2",
+          "text": "提供资源",
+          "tag": "提供资源",
+          "target": "design"
+        }
+      ],
+      "workflow": {
+        "status": "done",
+        "priority": "P1",
+        "acceptance": [
+          "确认原文件路径与版本"
+        ],
+        "files": [
+          "galgame_script_editor 1.12.html"
+        ],
+        "blockReason": ""
+      }
+    },
+    {
+      "id": "task-ui",
+      "title": "积木编辑与任务导出",
+      "routeType": "common",
+      "color": "#73d2b3",
+      "x": 940,
+      "y": 80,
+      "characters": "Codex",
+      "location": "app/blocks.js",
+      "bgm": "CODEX_TASK.md",
+      "summary": "填写验收标准和关联文件，将选中的积木整理为 Codex 可执行任务。",
+      "script": "先检查相关文件，按验收标准实施并记录实际结果。",
+      "image": "",
+      "choices": [
+        {
+          "id": "rel_6",
+          "text": "前置依赖",
+          "tag": "前置依赖",
+          "target": "accept"
+        }
+      ],
+      "workflow": {
+        "status": "todo",
+        "priority": "P1",
+        "acceptance": [
+          "六种积木类型可创建",
+          "任务说明包含 ID、目标、前置工序和验收标准"
+        ],
+        "files": [
+          "app/blocks.js"
+        ],
+        "blockReason": ""
+      }
+    },
+    {
+      "id": "task-sync",
+      "title": "文件保存与版本检查",
+      "routeType": "common",
+      "color": "#73d2b3",
+      "x": 940,
+      "y": 480,
+      "characters": "Codex",
+      "location": "server.py, app/blocks.js",
+      "bgm": "可同步的本地工程",
+      "summary": "保证画布和磁盘文件之间的修改可追踪，保存时检查版本。",
+      "script": "先检查相关文件，按验收标准实施并记录实际结果。",
+      "image": "",
+      "choices": [
+        {
+          "id": "rel_5",
+          "text": "前置依赖",
+          "tag": "前置依赖",
+          "target": "decision"
+        }
+      ],
+      "workflow": {
+        "status": "todo",
+        "priority": "P1",
+        "acceptance": [
+          "写入前检查磁盘版本",
+          "发现冲突时不覆盖未保存修改"
+        ],
+        "files": [
+          "server.py",
+          "app/blocks.js"
+        ],
+        "blockReason": ""
+      }
+    },
+    {
+      "id": "decision",
+      "title": "确认第一版使用方式",
+      "routeType": "branch",
+      "color": "#f295ac",
+      "x": 1380,
+      "y": 480,
+      "characters": "你",
+      "location": "README.md",
+      "bgm": "使用方式决策",
+      "summary": "先通过项目 JSON 和任务 Markdown 与 Codex 协作，按实际使用再扩展自动化。",
+      "script": "先检查相关文件，按验收标准实施并记录实际结果。",
+      "image": "",
+      "choices": [
+        {
+          "id": "rel_7",
+          "text": "前置依赖",
+          "tag": "前置依赖",
+          "target": "accept"
+        }
+      ],
+      "workflow": {
+        "status": "todo",
+        "priority": "P1",
+        "acceptance": [
+          "确认本地文件协作方式满足当前需求"
+        ],
+        "files": [
+          "README.md"
+        ],
+        "blockReason": ""
+      }
+    },
+    {
+      "id": "accept",
+      "title": "整体流程验收",
+      "routeType": "ending",
+      "color": "#b0cb70",
+      "x": 1820,
+      "y": 80,
+      "characters": "你 + Codex",
+      "location": "tests/",
+      "bgm": "验收记录",
+      "summary": "从创建积木到生成任务，再到更新状态，走通一次完整项目构建流程。",
+      "script": "先检查相关文件，按验收标准实施并记录实际结果。",
+      "image": "",
+      "choices": [],
+      "workflow": {
+        "status": "todo",
+        "priority": "P1",
+        "acceptance": [
+          "新建、连接、编辑、撤销均可使用",
+          "保存、刷新、外部更新后数据一致",
+          "验收结果与任务状态一致"
+        ],
+        "files": [
+          "tests/"
+        ],
+        "blockReason": ""
+      }
+    }
+  ],
+  "groups": [
+    {
+      "id": "group_design",
+      "title": "01 · 规划与基础",
+      "tag": "项目结构",
+      "color": "blue",
+      "nodeIds": [
+        "goal",
+        "design",
+        "schema",
+        "reference"
+      ]
+    },
+    {
+      "id": "group_build",
+      "title": "02 · 实施与验证",
+      "tag": "工序推进",
+      "color": "green",
+      "nodeIds": [
+        "task-ui",
+        "task-sync",
+        "decision",
+        "accept"
+      ]
+    }
+  ],
+  "stickyNotes": [],
+  "customRoutes": []
+}

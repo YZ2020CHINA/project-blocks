@@ -1,0 +1,6 @@
+interface:
+  display_name: "项目积木工坊"
+  short_description: "在项目内自动建立积木画布，用模块、依赖和验收卡片辅助 Codex 协作"
+  default_prompt: "使用 $project-blocks 为当前项目建立或打开积木流程画布，并根据实际需求维护模块、任务、依赖与验收状态。"
+policy:
+  allow_implicit_invocation: true
