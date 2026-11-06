@@ -96,7 +96,11 @@
 
 Python 集成测试：`python tests/test_integration.py`。浏览器测试：安装 Node.js 后运行 `npm install`、`npx playwright install chromium`、`npm run test:browser`。测试使用独立临时工程，不修改当前画布。可用 `PYTHON` 环境变量指定 Python 可执行文件；使用系统 Edge 时设置 `BROWSER_CHANNEL=msedge`。测试脚本也可复用当前用户 Codex bundled runtime 的依赖，无需写死用户名或绝对路径。
 
-上游：Azhou / YZ2020CHINA 的 [GalFlow](https://github.com/YZ2020CHINA/GalFlow)。见 [来源与授权说明](THIRD_PARTY_NOTICES.md)。本仓库未声明开源许可证。
+## 开源许可
+
+Project Blocks 采用 [MIT License](LICENSE)，版权所有 © 2026 Azhou / YZ2020CHINA。允许使用、修改、分发和商业使用；分发本软件或其主要部分时，须保留版权声明和 MIT 许可全文。软件按原样提供，不附带担保。
+
+画布基础来自同一作者的 [GalFlow](https://github.com/YZ2020CHINA/GalFlow)。本仓库随附的画布代码与 Project Blocks 新增代码一并按 MIT 授权；这不更改 GalFlow 上游仓库自身的许可证。详见 [来源与授权说明](THIRD_PARTY_NOTICES.md)。
 
 ## Codex 插件与自动初始化
 
