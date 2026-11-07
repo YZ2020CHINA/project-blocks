@@ -13,6 +13,8 @@ for name in ('app/index.html','app/blocks.css','app/blocks.js','server.py'):
     target.parent.mkdir(parents=True,exist_ok=True)
     shutil.copy2(ROOT/name,target)
 shutil.copy2(SKILL/'scripts/project_blocks.py',TEMPLATE/'runtime.py')
+shutil.copy2(SKILL/'scripts/project_blocks.py',TEMPLATE/'project_blocks.py')
+shutil.copy2(SKILL/'scripts/progress.py',TEMPLATE/'progress.py')
 shutil.copy2(ROOT/'integration/template-start.py',TEMPLATE/'start.py')
 (TEMPLATE/'launch.ps1').write_text('''$ErrorActionPreference = 'Stop'
 $env:PYTHONUTF8 = '1'
@@ -26,5 +28,5 @@ if (Test-Path -LiteralPath $runtimePython) {
 }
 ''',encoding='utf-8')
 (TEMPLATE/'启动.cmd').write_bytes(b'@echo off\r\npowershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0launch.ps1"\r\nif errorlevel 1 pause\r\n')
-(TEMPLATE/'.gitignore').write_text('.runtime.json\n.initialize.lock\n*.log\n__pycache__/\ndata/*.tmp\ndata/*.backup.json\n',encoding='utf-8')
+(TEMPLATE/'.gitignore').write_text('.runtime.json\n.initialize.lock\n*.log\n__pycache__/\ndata/*.tmp\ndata/*.backup.json\ndata/activity.json\n.upgrade-backups/\n',encoding='utf-8')
 print(TEMPLATE)

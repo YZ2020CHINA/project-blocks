@@ -12,6 +12,7 @@ import urllib.request
 
 ROOT=Path(__file__).resolve().parent.parent
 HELPER=ROOT/'integration/plugin/skills/project-blocks/scripts/project_blocks.py'
+PROGRESS=HELPER.with_name('progress.py')
 
 class Integration(unittest.TestCase):
     def setUp(self):
@@ -72,5 +73,27 @@ class Integration(unittest.TestCase):
         data.write_text('{ invalid',encoding='utf-8');before=data.read_bytes()
         self.run_helper(self.a,success=False);self.assertEqual(data.read_bytes(),before)
         self.run_helper(Path.home(),success=False)
+
+    def test_progress_commands_and_backed_up_upgrade(self):
+        result=self.run_helper(self.a,'--start')
+        root=self.a/'project-blocks';data=Path(result['dataFile'])
+        original=data.read_bytes()
+        css=root/'app/blocks.css';css.write_text('/* user customization */',encoding='utf-8')
+        upgrade=self.run_helper(self.a,'--upgrade','--start')
+        self.assertEqual(data.read_bytes(),original)
+        self.assertEqual((Path(upgrade['upgradeBackup'])/'app/blocks.css').read_text(),'/* user customization */')
+        def progress(*args,success=True):
+            proc=subprocess.run([sys.executable,str(PROGRESS),'--project-root',str(self.a),'--node','requirements',*args],capture_output=True,text=True,encoding='utf-8',env={**os.environ,'PYTHONUTF8':'1'})
+            self.assertEqual(proc.returncode==0,success,proc.stderr)
+            return proc
+        progress('--run',sys.executable,'-c','import time; time.sleep(16)')
+        activity=self.get(result['url'],'/api/activity')['nodes']['requirements']
+        self.assertEqual(activity['status'],'review')
+        self.assertEqual(json.loads(data.read_bytes())['nodes'][0]['workflow']['status'],'review')
+        progress('--run',sys.executable,'-c','raise SystemExit(2)',success=False)
+        self.assertEqual(self.get(result['url'],'/api/activity')['nodes']['requirements']['status'],'blocked')
+        progress('--status','done',success=False)
+        progress('--status','done','--evidence','实际测试：成功命令、失败命令与心跳已验证')
+        self.assertEqual(json.loads(data.read_bytes())['nodes'][0]['workflow']['status'],'done')
 
 if __name__=='__main__':unittest.main(verbosity=2)

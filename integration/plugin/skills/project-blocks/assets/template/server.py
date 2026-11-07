@@ -7,11 +7,32 @@ import json
 import os
 import threading
 import webbrowser
+import time
+import uuid
 
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / 'data/project.json'
 LOCK = threading.Lock()
 MAX_BYTES = 16 * 1024 * 1024
+STATUSES = {'todo', 'doing', 'blocked', 'review', 'done'}
+
+
+def write_json(path, value):
+    raw = json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False).encode('utf-8')
+    temp = path.with_name(path.name + '.' + uuid.uuid4().hex + '.tmp')
+    try:
+        temp.write_bytes(raw)
+        os.replace(temp, path)
+    finally:
+        temp.unlink(missing_ok=True)
+    return raw
+
+
+def read_activity():
+    path = DATA.with_name('activity.json')
+    if not path.exists():
+        return {'version': 1, 'nodes': {}}
+    return json.loads(path.read_bytes())
 
 
 def validate(p):
@@ -68,7 +89,19 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == '/api/info':
-            return self.json_response(200, {'app': 'project-blocks', 'dataFile': str(DATA), 'projectRoot': str(DATA.parent.parent.parent if DATA.parent.name == 'data' else DATA.parent)})
+            return self.json_response(200, {'app': 'project-blocks', 'apiVersion': 2, 'dataFile': str(DATA), 'projectRoot': str(DATA.parent.parent.parent if DATA.parent.name == 'data' else DATA.parent)})
+        if self.path == '/api/activity':
+            try:
+                with LOCK:
+                    activity = read_activity()
+                    p, _ = read_data()
+                    nodes = {n['id']: n for n in p['nodes']}
+                    # External JSON edits are also authoritative over old runs.
+                    activity['nodes'] = {key: entry for key, entry in activity['nodes'].items()
+                        if key in nodes and entry.get('status') == nodes[key].get('workflow', {}).get('status')}
+                return self.json_response(200, activity)
+            except (ValueError, OSError) as e:
+                return self.json_response(422, {'error': str(e)})
         if self.path == '/api/project':
             try:
                 with LOCK:
@@ -80,6 +113,74 @@ class Handler(SimpleHTTPRequestHandler):
             self.json_response(404, {'error': '接口不存在'})
         else:
             super().do_GET()
+
+    def do_POST(self):
+        if self.path != '/api/activity':
+            return self.json_response(404, {'error': '接口不存在'})
+        origin = self.headers.get('Origin')
+        if origin and origin not in {f'http://127.0.0.1:{self.server.server_port}', f'http://localhost:{self.server.server_port}'}:
+            return self.json_response(403, {'error': '仅接受本地进度更新'})
+        try:
+            length = int(self.headers.get('Content-Length', '0'))
+            if not 0 < length <= 65536:
+                return self.json_response(413, {'error': '进度请求为空或过大'})
+            body = json.loads(self.rfile.read(length))
+            node_id, status = body.get('nodeId'), body.get('status')
+            if status is not None and status not in STATUSES:
+                raise ValueError('工序状态无效')
+            for field in ('message', 'runId'):
+                if field in body and (not isinstance(body[field], str) or len(body[field]) > 2000):
+                    raise ValueError(f'{field} 必须是最多 2000 字符的字符串')
+            progress = body.get('progress')
+            if progress is not None and (type(progress) not in (int, float) or not 0 <= progress <= 100):
+                raise ValueError('进度必须是 0 到 100 的数字')
+            evidence = body.get('evidence', [])
+            if not isinstance(evidence, list) or any(not isinstance(e, str) for e in evidence):
+                raise ValueError('验收证据必须是字符串数组')
+            with LOCK:
+                p, revision = read_data()
+                node = next((n for n in p['nodes'] if n['id'] == node_id), None)
+                if node is None:
+                    raise ValueError('卡片不存在，请先建立真实工序')
+                activity = read_activity()
+                old = activity['nodes'].get(node_id, {})
+                if status is None and (not body.get('runId') or body['runId'] != old.get('runId') or old.get('status') != 'doing'):
+                    return self.json_response(409, {'error': '执行已结束或被另一个执行接管'})
+                if status is None and node.get('workflow', {}).get('status') != 'doing':
+                    return self.json_response(409, {'error': '工程状态已变化，旧执行不能继续上报心跳'})
+                # A wrapper may only finish its own run, never a later agent's work.
+                if body.get('expectedRunId') and body['expectedRunId'] != old.get('runId'):
+                    return self.json_response(409, {'error': '执行已被另一个执行接管'})
+                if status == 'done':
+                    if not evidence:
+                        raise ValueError('标记完成需要实际验收证据')
+                    for source in p['nodes']:
+                        dependencies = [c.get('target') for c in source.get('choices', []) if c.get('tag', '前置依赖') == '前置依赖'] if source.get('choices') else [source.get('defaultNext')]
+                        if node_id in dependencies and source.get('workflow', {}).get('status') != 'done':
+                            raise ValueError('仍有前置工序未完成')
+                now = time.time() * 1000
+                entry = {**old, 'status': status or old['status'], 'updatedAt': now}
+                for field in ('message', 'runId'):
+                    if field in body:
+                        entry[field] = body[field]
+                if status is not None:
+                    entry['progress'] = progress
+                    if 'runId' not in body:
+                        entry['runId'] = uuid.uuid4().hex
+                    node.setdefault('workflow', {})['status'] = status
+                    if evidence:
+                        node['workflow']['evidence'] = list(dict.fromkeys(node['workflow'].get('evidence', []) + evidence))
+                    validate(p)
+                    DATA.with_suffix('.backup.json').write_bytes(DATA.read_bytes())
+                    revision = hashlib.sha256(write_json(DATA, p)).hexdigest()
+                elif progress is not None:
+                    entry['progress'] = progress
+                activity['nodes'][node_id] = entry
+                activity['updatedAt'] = now
+                write_json(DATA.with_name('activity.json'), activity)
+            return self.json_response(200, {'revision': revision, 'activity': entry})
+        except (ValueError, TypeError, OSError, AttributeError, KeyError) as e:
+            return self.json_response(422, {'error': str(e)})
 
     def do_PUT(self):
         # Same-origin JSON only; bind loopback and reject browser cross-origin writes.
@@ -95,7 +196,7 @@ class Handler(SimpleHTTPRequestHandler):
             body = json.loads(self.rfile.read(length))
             p = validate(body.get('project'))
             with LOCK:
-                _, revision = read_data()
+                previous, revision = read_data()
                 if body.get('revision') != revision:
                     return self.json_response(409, {'error': '磁盘工程已更新，请先处理版本冲突'})
                 raw = json.dumps(p, ensure_ascii=False, indent=2, allow_nan=False).encode('utf-8')
@@ -104,6 +205,13 @@ class Handler(SimpleHTTPRequestHandler):
                 temp.write_bytes(raw)
                 os.replace(temp, DATA)
                 revision = hashlib.sha256(raw).hexdigest()
+                activity = read_activity()
+                by_id = {n['id']: n for n in p['nodes']}
+                for old in previous['nodes']:
+                    current = by_id.get(old['id'])
+                    if current is None or current.get('workflow', {}).get('status') != old.get('workflow', {}).get('status'):
+                        activity['nodes'].pop(old['id'], None)
+                write_json(DATA.with_name('activity.json'), activity)
             self.json_response(200, {'revision': revision})
         except (ValueError, TypeError, OSError, AttributeError) as e:
             self.json_response(422, {'error': str(e)})
@@ -129,7 +237,7 @@ if __name__ == '__main__':
         else:
             parser.error('Project JSON does not exist; initialize the project before starting.')
     server = ThreadingHTTPServer(('127.0.0.1', args.port), Handler)
-    url = f'http://127.0.0.1:{args.port}'
+    url = f'http://127.0.0.1:{server.server_port}'
     print(f'Project Blocks: {url}\nData: {DATA}', flush=True)
     if not args.no_browser:
         webbrowser.open(url)

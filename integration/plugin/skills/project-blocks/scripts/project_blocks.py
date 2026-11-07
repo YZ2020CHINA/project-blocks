@@ -86,7 +86,7 @@ def matches(url,data):
         opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
         with opener.open(url.rstrip('/')+'/api/info',timeout=.5) as response:
             info=json.load(response)
-        return info.get('app')=='project-blocks' and Path(info.get('dataFile','')).resolve()==data.resolve()
+        return info.get('app')=='project-blocks' and info.get('apiVersion',0)>=2 and Path(info.get('dataFile','')).resolve()==data.resolve()
     except (OSError,ValueError):
         return False
 
@@ -124,17 +124,22 @@ def start(root,port=None):
             process.wait(timeout=5)
     raise RuntimeError('无法启动工程画布；请查看 project-blocks/server.log')
 
-def ensure(project_root,title=None,plan_path=None,launch=False,port=None,template=None):
+def ensure(project_root,title=None,plan_path=None,launch=False,port=None,template=None,upgrade=False):
     project_root=Path(project_root).resolve(strict=True)
     if not project_root.is_dir() or project_root==Path(project_root.anchor) or project_root==Path.home():
         raise ValueError('请指定实际项目目录，不能使用主目录或磁盘根目录')
     root=project_root/'project-blocks'
+    # The tool's own repository stores its canvas directly; avoid nesting a copy.
+    if (project_root/'integration/plugin/plugin.json').is_file() and (project_root/'data/project.json').is_file():
+        root=project_root
     if root.is_symlink():
         raise ValueError('目标不能是符号链接')
     root.mkdir(exist_ok=True)
     if not root.resolve().is_relative_to(project_root):
         raise ValueError('目标超出项目目录')
     template=Path(template or TEMPLATE)
+    if upgrade and root==project_root:
+        raise ValueError('工具源码仓库直接使用当前运行文件，无需用模板升级自身')
     with project_lock(root):
         data=root/'data/project.json'
         if not data.resolve().is_relative_to(root.resolve()):
@@ -147,18 +152,26 @@ def ensure(project_root,title=None,plan_path=None,launch=False,port=None,templat
             plan=json.loads(Path(plan_path).read_text(encoding='utf-8-sig')) if plan_path else None
             project=build_project(title or (plan or {}).get('title') or project_root.name,plan)
             validate(project,template/'server.py')
+        backup_root=root/'.upgrade-backups'/time.strftime('%Y%m%d-%H%M%S')/uuid.uuid4().hex[:8]
         for source in template.rglob('*'):
             if source.is_dir() or '__pycache__' in source.parts:
                 continue
             target=root/source.relative_to(template)
             if not target.resolve().is_relative_to(root.resolve()):
                 raise ValueError('目标文件超出工程目录')
-            if not target.exists():
+            if upgrade and target.exists() and target.read_bytes()!=source.read_bytes():
+                backup=backup_root/source.relative_to(template)
+                backup.parent.mkdir(parents=True,exist_ok=True)
+                shutil.copy2(target,backup)
+                shutil.copy2(source,target)
+            elif not target.exists():
                 target.parent.mkdir(parents=True,exist_ok=True)
                 shutil.copy2(source,target)
         if project is not None:
             atomic_json(data,project)
-        result=dict(projectRoot=str(project_root),dataFile=str(data),created=not existing,version='1.2.0')
+        result=dict(projectRoot=str(project_root),dataFile=str(data),created=not existing,version='1.3.0')
+        if backup_root.exists():
+            result['upgradeBackup']=str(backup_root)
         if launch:
             result.update(start(root,port))
         return result
@@ -172,9 +185,10 @@ def main():
     command.add_argument('--plan',type=Path)
     command.add_argument('--start',action='store_true')
     command.add_argument('--port',type=int)
+    command.add_argument('--upgrade',action='store_true',help='Back up and refresh tool runtime files; preserve project JSON')
     args=parser.parse_args()
     try:
-        print(json.dumps(ensure(args.project_root,args.title,args.plan,args.start,args.port),ensure_ascii=False))
+        print(json.dumps(ensure(args.project_root,args.title,args.plan,args.start,args.port,upgrade=args.upgrade),ensure_ascii=False))
     except Exception as error:
         print(json.dumps(dict(error=str(error)),ensure_ascii=False),file=sys.stderr)
         return 1

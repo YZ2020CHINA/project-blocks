@@ -16,11 +16,13 @@ description: 为新建或正在构建的本地 Codex 软件项目建立并维护
 
    使用当前环境可用的 Python 3.10+。Windows 可调用 bundled runtime 的 Python；helper 启动后台服务时隐藏窗口。无需网络、pip、模型 API 或密钥。
 3. helper 返回 JSON 中的 `url` 和 `dataFile`。用当前聊天可用的 `open_in_codex` 工具将该 URL 作为 browser target 打开到右侧；这一步由 agent 执行，不使用外部浏览器替代。若没有该工具，返回可点击的本地 URL。`--start` 不会自动打开系统浏览器。
-4. 按真实需求填充或细化卡片，再继续实现项目。默认种子是“需求、实现、验收”待开始占位，不能视为已完成的工作。项目有明确计划时，可在初始化时传 `--plan <absolute-json-file>`，格式见 [工程格式](references/workflow.md)。
+4. 按真实需求填充或细化卡片，再继续实现项目。默认种子是“需求、实现、验收”待开始占位，不能视为已完成的工作。项目有明确计划时，可在初始化时传 `--plan <absolute-json-file>`，格式见 [工程格式](references/workflow.md)。旧画布需要实时进度功能时，运行 `ensure ... --upgrade --start`；仅更新模板拥有的运行文件并备份旧文件，不改工程 JSON。使用 helper 返回的新 URL 打开面板。
 
 ## 协作与更新
 
 - 工作阶段有实质变化时，更新对应卡片的状态、文件、交付物、验收标准及实际验证证据。完成与否依据代码和检查结果，不依据计划。简短答疑不需要写卡片。
+- **实时执行进度**：开始执行一张已有卡片前，先运行 `python "<skill-dir>/scripts/progress.py" --project-root "<absolute-project-root>" --node "<card-id>" --status doing --message "正在检查/实现……"`。状态命令返回 `runId`；持续工作时在下一次工具边界发送同一 `--run-id` 心跳（不传 `--status`），通常每 15–30 秒更新一次。长命令可用 `--run <command> [args...]`，helper 自动每 15 秒心跳，命令成功进入 `review`、失败进入 `blocked`。停止、交还用户或切换工序前结束旧卡片的 `doing`（待验收用 `review`，等待输入/失败用 `blocked`）。同时执行的真实工序可以同时高亮；不要把尚未执行的卡片全部设为进行中。百分比仅在有真实可量化进度时提供 `--progress`，不能编造。画布每 2.5 秒读取 `data/activity.json`，90 秒无心跳后停止动画并显示等待更新。
+- **完成状态**：实际验收通过后，再运行 `progress.py ... --status done --evidence "测试命令及结果"`；服务会拒绝没有验收证据的完成状态，也会阻止未完成前置依赖的完成。`todo`、`doing`、`blocked`、`review` 等状态会同步回 `data/project.json`，实时心跳和 UI 布局分开保存。
 - ID、坐标、分组、便签、用户文字与非本次范围的卡片保持原样；新增关系箭头由前置指向后续。
 - 修改工程前读取当前文件；写入使用临时文件原子替换。避免覆盖浏览器未保存的编辑，提醒其先保存；界面发现磁盘变化且有本地编辑会提示版本冲突。
 - 再次打开同一项目重新运行 `ensure ... --start`；helper 检查服务确实对应同一工程才复用端口，不会把其他项目的画布当作当前工程。

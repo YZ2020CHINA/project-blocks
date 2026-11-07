@@ -9,6 +9,7 @@
   const STATUS = {todo:['待开始','#9baac4'], doing:['进行中','#8ba9ff'], blocked:['受阻','#edaa6b'], review:['待验收','#c5a2fa'], done:['已完成','#73d2b3']};
   const RELATIONS = ['前置依赖','组成模块','提供资源','验证结果','参考关联'];
   let revision = null, baseline = '', remote = null, loading = true, saving = false, panel = null;
+  let activity = {version:1,nodes:{}}, activityLoading = true, activityOnline = false, polling = false, activityPolling = false;
   let statusFilter = 'all';
   let dataFile = 'project-blocks/data/project.json';
   const $ = id => document.getElementById(id);
@@ -20,6 +21,49 @@
   function links(){return project.nodes.flatMap(n => n.choices?.length ? n.choices.filter(c=>c.target).map(c=>({from:n.id,to:c.target,type:c.tag || '前置依赖'})) : n.defaultNext ? [{from:n.id,to:n.defaultNext,type:'前置依赖'}] : []);}
   function prerequisites(n){return links().filter(e=>e.to===n.id && e.type==='前置依赖').map(e=>project.nodes.find(x=>x.id===e.from)).filter(Boolean);}
   function blockers(n){return prerequisites(n).filter(x=>wf(x).status!=='done');}
+  function liveEntry(n){
+    const entry = activity.nodes?.[n.id];
+    if(!entry) return null;
+    const age = Date.now() - Number(entry.updatedAt || 0);
+    return {...entry, stale: !Number.isFinite(age) || age > 90000};
+  }
+  function liveDoing(n){const entry=liveEntry(n);return activityOnline && entry && entry.status==='doing' && !entry.stale;}
+  function focusLive(){
+    const node=project.nodes.find(n=>liveDoing(n));
+    if(node){selectedNodeIds.clear();selectedNodeIds.add(node.id);updateNodeSelectionStyles();focusNodeInCanvas(node.id);showToast('已定位当前进行中的工序：'+node.title,'info');}
+    else showToast('当前没有收到正在进行中的工序心跳','info');
+  }
+  function updateActivityDecor(){
+    const current=project.nodes.find(n=>liveDoing(n));
+    document.querySelectorAll('.story-node').forEach(el=>{
+      const n=project.nodes.find(x=>x.id===el.dataset.id), entry=n&&liveEntry(n);
+      el.classList.toggle('pb-live-doing',!!n&&liveDoing(n));
+      el.classList.toggle('pb-live-stale',!!entry&&entry.status==='doing'&&(!activityOnline||entry.stale));
+      el.classList.toggle('pb-live-blocked',!!entry&&entry.status==='blocked'&&!entry.stale);
+      el.title=entry ? (entry.status==='doing'&&(!activityOnline||entry.stale)?'等待进度更新 · ':'实时进度：')+(entry.message||STATUS[entry.status]?.[0]||'') : '';
+      el.dataset.workflowStatus=entry?.status||wf(n||{}).status||'todo';
+      const note=el.querySelector('.pb-live-note');
+      if(note){note.hidden=!entry;note.textContent=entry?(entry.status==='doing'&&(!activityOnline||entry.stale)?'等待进度更新':STATUS[entry.status]?.[0]||'')+(entry.message?' · '+entry.message:''):'';}
+    });
+    document.querySelectorAll('.chapter-item').forEach(el=>{
+      const n=project.nodes.find(x=>x.id===el.dataset.id), entry=n&&liveEntry(n);
+      el.classList.toggle('pb-live-doing',!!n&&liveDoing(n));
+      el.classList.toggle('pb-live-stale',!!entry&&entry.status==='doing'&&(!activityOnline||entry.stale));
+    });
+    document.querySelectorAll('.connection-line').forEach(el=>{
+      const source=project.nodes.find(n=>n.id===el.dataset.source), target=project.nodes.find(n=>n.id===el.dataset.target);
+      const dependency=el.dataset.relation==='前置依赖';
+      el.classList.toggle('pb-live-edge',dependency&&!!source&&liveDoing(source));
+      el.classList.toggle('pb-live-arrival',dependency&&!!target&&liveDoing(target));
+    });
+    const live=$('pb-live');
+    if(live){
+      live.className='pb-live-indicator '+(current?'is-live':activityLoading?'is-loading':'is-idle');
+      if(current){const e=liveEntry(current),count=project.nodes.filter(liveDoing).length;live.innerHTML=`<i></i><span><strong>正在进行${count>1?' · '+count+' 项':''}</strong> ${esc(current.title)}${e.message?' · '+esc(e.message):''}</span>${e.progress!=null?`<em>${Math.round(e.progress)}%</em>`:''}`;live.title=e.message||'Codex 正在执行此工序';}
+      else if(activityLoading)live.innerHTML='<i></i><span>正在读取执行进度…</span>';
+      else {const waiting=project.nodes.find(n=>liveEntry(n)?.status==='doing');live.innerHTML='<i></i><span>'+(!activityOnline?'实时进度连接暂不可用':waiting?'等待进度更新 · '+esc(waiting.title):'当前没有正在执行的工序')+'</span>';}
+    }
+  }
   function stats(){
     if (!$('pb-count')) return;
     const done = project.nodes.filter(n=>wf(n).status==='done').length;
@@ -36,15 +80,19 @@
       const n = project.nodes.find(n=>n.id===el.dataset.id);
       el.classList.toggle('pb-hidden-card', !!n && statusFilter!=='all' && wf(n).status!==statusFilter);
     });
+    updateActivityDecor();
     let empty = $('pb-empty');
     if (!project.nodes.length && !empty){empty=document.createElement('div');empty.id='pb-empty';empty.className='pb-empty';empty.textContent='从左侧拖入第一块积木\n或使用「从大纲生成」创建工序';empty.style.whiteSpace='pre-line';canvasViewport.append(empty);}
     if(project.nodes.length && empty)empty.remove();
   }
   const originalRender = renderAll;
   renderAll = function(){originalRender();stats();};
+  const originalConnections=renderConnections;
+  renderConnections=function(){updateActivityDecor();originalConnections();updateActivityDecor();};
   const originalCard = createNodeElement;
   createNodeElement = function(n){
     const card=originalCard(n), w=wf(n), s=STATUS[w.status] || STATUS.todo;
+    const halo=document.createElement('span');halo.className='pb-live-halo';halo.setAttribute('aria-hidden','true');card.prepend(halo);
     card.style.setProperty('--pb-color', n.color || TYPES[n.routeType]?.[1] || '#8b9dff');
     const info=document.createElement('div');info.className='pb-card-info';
     info.innerHTML=`<span class="pb-pill" data-status="${esc(w.status || 'todo')}" style="--status-color:${s[1]}">${s[0]}</span><span>${esc(w.priority || 'P1')} · ${esc(n.characters || '未分配')}</span>`;
@@ -53,6 +101,7 @@
     const count=(w.acceptance || []).length;
     detail.innerHTML=`${count ? '☑ '+count+' 条验收标准' : '○ 待补充验收标准'}${blockers(n).length ? ' <span class="pb-warn">· '+blockers(n).length+' 项前置未完成</span>' : ''}<div class="pb-card-files">${esc((w.files || []).join(' · ') || n.location || '尚未关联文件')}</div>`;
     card.querySelector('.node-body').after(detail);
+    const liveNote=document.createElement('div');liveNote.className='pb-live-note';liveNote.hidden=true;detail.after(liveNote);
     if(n.choices?.length){const port=document.createElement('div');port.className='port port-out-default';port.dataset.portType='default-out';port.dataset.nodeId=n.id;port.title='拖动以增加一条前置依赖';card.append(port);}
     return card;
   };
@@ -96,6 +145,7 @@
       r.querySelector('button').onclick=()=>r.remove();$('pb-relations').append(r);
     }
     (n.choices?.length?n.choices.filter(c=>c.target).map(c=>[c.tag || '前置依赖',c.target]):n.defaultNext?[['前置依赖',n.defaultNext]]:[]).forEach(args=>row(...args));
+    $('pb-status').dataset.nodeId=id;$('pb-status').dataset.baseline=w.status||'todo';
     $('pb-add-rel').onclick=()=>row();
     $('pb-apply').onclick=()=>{
       if(!$('pb-title').value.trim())return err('请填写卡片名称');
@@ -161,12 +211,45 @@
   function applyProject(p,rev,history=false){
     checkProject(p);if(history)pushHistory();project=p;revision=rev;projectTitleInput.value=p.title || '未命名项目';selectedNodeIds.clear();selectedStickyIds.clear();syncCustomRoutesFromNodes();updateCanvasTransform();renderAll();baseline=snapshot();remote=null;triggerAutoSave();stats();
   }
+  // Merge execution-only fields against the last saved baseline. Layout, title,
+  // selection and open editors remain local; same-field changes still conflict.
+  function mergeProgress(data){
+    if(!baseline)return false;
+    const base=JSON.parse(baseline),incoming=structuredClone(data.project),before=structuredClone(base);
+    const fields=['status','evidence'],patches=[];
+    for(const n of incoming.nodes){
+      const old=before.nodes.find(x=>x.id===n.id),local=project.nodes.find(x=>x.id===n.id);
+      if(!old||!local)return false;
+      for(const key of fields){
+        const previous=old.workflow?.[key],next=n.workflow?.[key],value=local.workflow?.[key];
+        if(JSON.stringify(previous)!==JSON.stringify(next)){
+          if(JSON.stringify(value)!==JSON.stringify(previous)&&JSON.stringify(value)!==JSON.stringify(next))return false;
+          patches.push({local,key,next});
+        }
+        if(n.workflow)delete n.workflow[key];
+        if(old.workflow)delete old.workflow[key];
+      }
+    }
+    if(JSON.stringify(before)!==JSON.stringify(incoming))return false;
+    for(const {local,key,next} of patches){local.workflow||={};if(next===undefined)delete local.workflow[key];else local.workflow[key]=next;}
+    const statusEditor=$('pb-status');
+    if(statusEditor){const patch=patches.find(p=>p.key==='status'&&p.local.id===statusEditor.dataset.nodeId);if(patch){if(statusEditor.value===statusEditor.dataset.baseline)statusEditor.value=patch.next;statusEditor.dataset.baseline=patch.next;}}
+    revision=data.revision;baseline=JSON.stringify(data.project);remote=null;
+    // Keep modal drafts and node DOM stable while live updates arrive.
+    for(const {local} of patches){const pill=$('node-el-'+local.id)?.querySelector('.pb-pill'),s=STATUS[wf(local).status]||STATUS.todo;if(pill){pill.dataset.status=wf(local).status;pill.style.setProperty('--status-color',s[1]);pill.textContent=s[0];}}
+    stats();return true;
+  }
   async function poll(){
-    if(saving)return;
+    if(saving||polling)return;polling=true;
     try{const res=await fetch('/api/project',{cache:'no-store'});const data=await res.json();if(!res.ok)throw Error(data.error);checkProject(data.project);if(data.dataFile)dataFile=data.dataFile;
-      if(revision!==data.revision){if(!loading && dirty()){remote=data;stats();}else if(!panel && !document.querySelector('.story-node.dragging') && !document.activeElement.matches('input,textarea'))applyProject(data.project,data.revision);}
+      if(revision!==data.revision){if(!loading && mergeProgress(data)){}else if(!loading && dirty()){remote=data;stats();}else if(!panel && !document.querySelector('.story-node.dragging') && !document.activeElement.matches('input,textarea'))applyProject(data.project,data.revision);}
       if(loading){loading=false;stats();}
-    }catch(e){if(loading){loading=false;baseline=snapshot();showToast('本地服务未连接，当前可离线编辑并导出 JSON','info');}else if(revision){$('pb-sync').textContent='同步暂不可用：'+e.message;}}
+    }catch(e){if(loading){loading=false;baseline=snapshot();showToast('本地服务未连接，当前可离线编辑并导出 JSON','info');}else if(revision){$('pb-sync').textContent='同步暂不可用：'+e.message;}}finally{polling=false;}
+  }
+  async function pollActivity(){
+    if(activityPolling)return;activityPolling=true;
+    try{const res=await fetch('/api/activity',{cache:'no-store'});const data=await res.json();if(!res.ok)throw Error(data.error);const changed=JSON.stringify(activity.nodes)!==JSON.stringify(data.nodes);activity=data;activityOnline=true;activityLoading=false;if(changed)renderConnections();else updateActivityDecor();}
+    catch(e){activityOnline=false;activityLoading=false;updateActivityDecor();}finally{activityPolling=false;}
   }
   function conflict(){
     if(!remote)return;
@@ -245,14 +328,14 @@
     // Dedicated project controls replace story-specific documents and packaging.
     ['btn-export-script','btn-package-zip','btn-csp-doc-view','wrap-csp-lang','btn-csp-help'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
     const top=document.createElement('div');top.className='pb-top';top.innerHTML='<button id="pb-outline-btn">从大纲生成</button><button id="pb-check">检查关系</button><button id="pb-task">Codex 任务 ↗</button><button id="pb-export">导出 JSON</button><button id="pb-help">使用说明</button><button id="pb-save" class="pb-primary">保存工程</button>';document.querySelector('header').append(top);
-    const strip=document.createElement('div');strip.className='pb-strip';strip.innerHTML='<span>PROJECT / 工序画布</span><span><strong id="pb-count">0</strong> 个积木</span><span><strong id="pb-links">0</strong> 条关系</span><span><strong id="pb-done">0</strong> 已完成</span><span><strong id="pb-blocked">0</strong> 受阻</span><div class="pb-progress"><i id="pb-progress"></i></div><span class="pb-sync" id="pb-sync" style="cursor:pointer"></span>';document.querySelector('header').after(strip);
+    const strip=document.createElement('div');strip.className='pb-strip';strip.innerHTML='<span>PROJECT / 工序画布</span><span><strong id="pb-count">0</strong> 个积木</span><span><strong id="pb-links">0</strong> 条关系</span><span><strong id="pb-done">0</strong> 已完成</span><span><strong id="pb-blocked">0</strong> 受阻</span><div class="pb-progress"><i id="pb-progress"></i></div><span class="pb-live-indicator is-loading" id="pb-live" title="实时执行进度"></span><button class="pb-live-focus" id="pb-live-focus" type="button">定位进行中</button><span class="pb-sync" id="pb-sync" style="cursor:pointer"></span>';document.querySelector('header').after(strip);
     const lib=document.createElement('div');lib.className='pb-library';lib.innerHTML='<div class="pb-eyebrow">BUILDING BLOCKS</div><div class="pb-library-title">从一块积木开始</div><div class="pb-bricks">'+Object.entries(TYPES).map(([type,v])=>`<button class="pb-brick" draggable="true" data-type="${type}" style="--brick:${v[1]}">${v[0]}<span>${v[2]}</span></button>`).join('')+'</div><p>点击添加，或拖入画布<br>双击卡片编辑 · 拖动端口连接</p>';document.querySelector('.sidebar').prepend(lib);
     lib.querySelectorAll('button').forEach(btn=>{btn.onclick=()=>addNewNode({routeType:btn.dataset.type});btn.ondragstart=e=>e.dataTransfer.setData('application/project-block',btn.dataset.type);});
     canvasViewport.addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('application/project-block'))e.preventDefault();});
     canvasViewport.addEventListener('drop',e=>{const type=e.dataTransfer.getData('application/project-block');if(!TYPES[type])return;e.preventDefault();const p=screenToWorld(e.clientX,e.clientY);addNewNode({routeType:type,x:Math.round(p.x-160),y:Math.round(p.y-40)});});
     const sf=document.createElement('select');sf.id='pb-status-filter';sf.className='pb-status-filter';sf.innerHTML='<option value="all">全部工序状态</option>'+options(STATUS,'');document.querySelector('.sidebar-header').append(sf);sf.onchange=()=>{statusFilter=sf.value;stats();};
     setupSidebarResize();
-    $('pb-outline-btn').onclick=outline;$('pb-check').onclick=inspectGraph;$('pb-help').onclick=help;$('pb-save').onclick=save;$('pb-sync').onclick=conflict;
+    $('pb-outline-btn').onclick=outline;$('pb-check').onclick=inspectGraph;$('pb-help').onclick=help;$('pb-save').onclick=save;$('pb-sync').onclick=conflict;$('pb-live-focus').onclick=focusLive;
     $('pb-export').onclick=()=>download('project.blocks.json',snapshot(),'application/json');
     $('pb-task').onclick=()=>{const selected=project.nodes.filter(n=>selectedNodeIds.has(n.id));showTask(selected.length?selected:project.nodes);};
     // Replace original download-save with service save; file-menu JSON export remains available via conflict backup and task workflow.
@@ -265,7 +348,7 @@
       if(!['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)&&e.key.toLowerCase()==='n'&&!e.ctrlKey&&!e.metaKey){e.preventDefault();addNewNode();}
     },true);
     window.addEventListener('beforeunload',e=>{if(!loading && dirty()){e.preventDefault();e.returnValue='';}});
-    baseline=snapshot();renderAll();poll();setInterval(poll,3000);setInterval(stats,800);
+    baseline=snapshot();renderAll();poll();pollActivity();setInterval(poll,3000);setInterval(pollActivity,2500);setInterval(stats,800);
   }
   window.addEventListener('DOMContentLoaded',boot);
 })();

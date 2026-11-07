@@ -5,6 +5,18 @@
 类型：`prologue` 需求、`route` 模块、`common` 任务、`character` 资源、`branch` 决策、`ending` 验收。
 状态：`todo` 待开始、`doing` 进行中、`blocked` 受阻、`review` 待验收、`done` 已完成。
 
+## 实时进度
+
+画布服务提供 `/api/activity`，把执行心跳与 `data/project.json` 分开保存。skill 的 `scripts/progress.py` 负责启动已存在的项目服务并发送状态：开始工序时发送 `doing`，长命令每 15 秒发送同一 `runId` 的心跳，命令成功进入 `review`，失败进入 `blocked`。实际验收通过后，使用 `--status done --evidence "检查命令及结果"`；服务会拒绝没有证据的完成状态和未完成前置依赖。90 秒没有心跳时，页面将进行中显示为等待更新。
+
+示例：
+
+```text
+python "<skill-dir>/scripts/progress.py" --project-root "<项目根目录>" --node task_storage --status doing --message "正在实现保存接口"
+python "<skill-dir>/scripts/progress.py" --project-root "<项目根目录>" --node task_storage --run -- python tests/test_storage.py
+python "<skill-dir>/scripts/progress.py" --project-root "<项目根目录>" --node task_storage --status done --evidence "python tests/test_storage.py：通过"
+```
+
 `ensure --plan file.json` 接收以下计划；仅新建工程时读取，不会替换已有工程：
 
 ```json

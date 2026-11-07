@@ -1,4 +1,4 @@
-# 项目积木工坊 · Project Blocks 1.0
+# 项目积木工坊 · Project Blocks 1.3
 
 基于 **galgame_script_editor 1.12 / GalFlow** 改造的本地项目工序可视化工具。保留原工具的无限画布、卡片拖动、端口连线、分组、便签、小地图、主题与撤销，增加项目工序和 Codex 文件协作。
 
@@ -47,7 +47,25 @@
 
 若 Codex 的工作目录就是本工具目录，文件路径是 `data/project.json`。也可以把工具复制到你正在开发的项目目录，再使用它。
 
-这版通过文件与任务 Markdown 协作。它不会自行调用模型或自动跟踪 Codex 聊天的执行状态，状态需要你或 Codex 根据实际结果写入工程文件。
+通过文件、任务 Markdown 与执行进度命令协作。Codex 按 skill 在开始、切换和结束工序时上报进度；工具不读取聊天文本来猜测正在做什么，也不自行调用模型。
+
+## 实时执行画布
+
+Codex 上报当前工序后，对应卡片会出现从背面向四周扩散的暖黄色霓虹呼吸光、目录高亮和依赖连线流动；约 2.8 秒完成一次明暗呼吸，卡片本身不缩放。顶部显示工序名称与执行说明，点击「定位进行中」可跳到当前卡片。多个真实并行工序可同时高亮。支持经典、液体玻璃、P5R 的日夜主题与系统减少动态效果设置。
+
+进度命令在实际项目根目录运行（卡片须已存在）：
+
+```text
+python project-blocks/progress.py --project-root . --node task_storage --status doing --message "正在实现保存接口"
+python project-blocks/progress.py --project-root . --node task_storage --run python tests/test_storage.py
+python project-blocks/progress.py --project-root . --node task_storage --status done --evidence "python tests/test_storage.py：通过"
+```
+
+`--run` 每 15 秒发送一次心跳，成功后进入待验收，失败后标记受阻。手动上报返回 `runId`，后续可用 `--run-id <返回值>` 续报；百分比只在实际可量化时使用 `--progress 0..100`。90 秒没有心跳或服务失联时停止运行动画，显示等待更新。切换工序、暂停或结束工作时应上报 `review`、`blocked` 或经验证的 `done`，避免留下过期的进行中状态。
+
+心跳保存在忽略提交的 `data/activity.json`；状态和验收证据仍写回工程。页面每 2.5 秒读取心跳，进度字段单独合并，保留用户未保存的文字和布局；同一字段冲突仍需处理。完成状态需要证据且前置工序已完成。
+
+旧项目升级：使用新版 skill helper 运行 `ensure --project-root "实际项目目录" --upgrade --start`。升级仅备份并替换工具运行文件，保留工程 JSON；旧文件在 `.upgrade-backups/`，使用返回的新 URL 重新打开右侧面板。未指定 `--upgrade` 时仍保留自定义运行文件。
 
 ## 数据格式
 
