@@ -169,7 +169,7 @@ def ensure(project_root,title=None,plan_path=None,launch=False,port=None,templat
                 shutil.copy2(source,target)
         if project is not None:
             atomic_json(data,project)
-        result=dict(projectRoot=str(project_root),dataFile=str(data),created=not existing,version='1.3.0')
+        result=dict(projectRoot=str(project_root),dataFile=str(data),created=not existing,version='1.3.1')
         if backup_root.exists():
             result['upgradeBackup']=str(backup_root)
         if launch:

@@ -8,7 +8,7 @@ TEMPLATE=SKILL/'assets/template'
 for name in ('LICENSE', 'THIRD_PARTY_NOTICES.md'):
     shutil.copy2(ROOT/name,SKILL.parent.parent/name)
     shutil.copy2(ROOT/name,TEMPLATE/name)
-for name in ('app/index.html','app/blocks.css','app/blocks.js','server.py'):
+for name in ('app/index.html','app/blocks.css','app/blocks.js','app/logo.svg','server.py'):
     target=TEMPLATE/name
     target.parent.mkdir(parents=True,exist_ok=True)
     shutil.copy2(ROOT/name,target)

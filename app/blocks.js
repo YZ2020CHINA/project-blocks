@@ -324,7 +324,8 @@
     applyTheme(currentTheme,currentUiStyle);
     Object.assign(I18N_DICT['zh-CN'],{brandName:'项目积木工坊',tagOutline:'目标',tagCharacter:'资源',tagPrologue:'需求',tagCommon:'任务',tagBranch:'决策',tagRoute:'模块',tabEnding:'验收',sidebarTitle:'工程目录',searchPlaceholder:'搜索工序、负责人、文件…',nodeCharactersTip:'负责人',nodeLocationTip:'文件路径',nodeBgmTip:'交付物',choicesHeaderLeft:'输出关系',choicesHeaderRight:'连接',portInTip:'关系入口',portOutTip:'拖至后续工序',connDefaultTag:'前置依赖',toastReady:'项目积木工坊已就绪'});
     applyLanguage('zh-CN');
-    const logo=document.querySelector('.brand-logo');if(logo)logo.textContent='▦';
+    const logo=document.querySelector('.brand-logo');if(logo){logo.innerHTML='<img src="logo.svg" alt="四色积木小屋">';logo.title='项目积木工坊';}
+    let favicon=document.querySelector('link[rel="icon"]');if(!favicon){favicon=document.createElement('link');favicon.rel='icon';document.head.append(favicon);}favicon.href='logo.svg';
     // Dedicated project controls replace story-specific documents and packaging.
     ['btn-export-script','btn-package-zip','btn-csp-doc-view','wrap-csp-lang','btn-csp-help'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
     const top=document.createElement('div');top.className='pb-top';top.innerHTML='<button id="pb-outline-btn">从大纲生成</button><button id="pb-check">检查关系</button><button id="pb-task">Codex 任务 ↗</button><button id="pb-export">导出 JSON</button><button id="pb-help">使用说明</button><button id="pb-save" class="pb-primary">保存工程</button>';document.querySelector('header').append(top);

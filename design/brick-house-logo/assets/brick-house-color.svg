@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>四色积木小屋 · Brick House</title>
+  <desc>红黄蓝绿积木交错拼接，砖缝上下错位，阶梯屋顶和留白门洞，极简扁平风格。</desc>
+  <g id="roof">
+    <rect id="stud-left" x="224" y="100" width="24" height="20" rx="4" fill="#E74B43"/>
+    <rect id="stud-right" x="264" y="100" width="24" height="20" rx="4" fill="#E74B43"/>
+    <rect id="roof-top-red" x="208" y="124" width="96" height="48" rx="7" fill="#E74B43"/>
+    <rect id="roof-middle-blue" x="160" y="180" width="92" height="48" rx="7" fill="#347BCB"/>
+    <rect id="roof-middle-yellow" x="260" y="180" width="92" height="48" rx="7" fill="#F5BD3F"/>
+    <rect id="eaves-yellow" x="112" y="236" width="92" height="48" rx="7" fill="#F5BD3F"/>
+    <rect id="eaves-green" x="212" y="236" width="88" height="48" rx="7" fill="#35A66E"/>
+    <rect id="eaves-red" x="308" y="236" width="92" height="48" rx="7" fill="#E74B43"/>
+  </g>
+  <g id="walls">
+    <rect id="wall-red" x="144" y="296" width="108" height="48" rx="7" fill="#E74B43"/>
+    <rect id="wall-blue" x="260" y="296" width="108" height="48" rx="7" fill="#347BCB"/>
+    <path id="base-green" d="M151 352H225V412H151Q144 412 144 405V359Q144 352 151 352Z" fill="#35A66E"/>
+    <path id="base-yellow" d="M287 352H361Q368 352 368 359V405Q368 412 361 412H287Z" fill="#F5BD3F"/>
+  </g>
+</svg>

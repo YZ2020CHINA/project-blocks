@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>积木小屋 · Brick House</title>
+  <desc>极简扁平积木房屋标志，暖黄色阶梯屋顶、积木凸点与深色墙体，门洞留白。</desc>
+  <g id="roof" fill="#26333F">
+    <rect id="stud-left" x="224" y="100" width="24" height="20" rx="4"/>
+    <rect id="stud-right" x="264" y="100" width="24" height="20" rx="4"/>
+    <rect id="roof-top" x="208" y="124" width="96" height="48" rx="7"/>
+    <rect id="roof-middle" x="160" y="180" width="192" height="48" rx="7"/>
+    <rect id="roof-eaves" x="112" y="236" width="288" height="48" rx="7"/>
+  </g>
+  <g id="house" fill="#26333F">
+    <rect id="wall-upper-left" x="144" y="296" width="108" height="48" rx="7"/>
+    <rect id="wall-upper-right" x="260" y="296" width="108" height="48" rx="7"/>
+    <path id="wall-and-door" d="M151 352H225V412H151Q144 412 144 405V359Q144 352 151 352ZM287 352H361Q368 352 368 359V405Q368 412 361 412H287Z"/>
+  </g>
+</svg>

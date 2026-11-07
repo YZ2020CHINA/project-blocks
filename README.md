@@ -1,4 +1,8 @@
-# 项目积木工坊 · Project Blocks 1.3
+# 项目积木工坊 · Project Blocks 1.3.1
+
+![Project Blocks 积木小屋标志](integration/plugin/assets/logo.png)
+
+四色积木小屋标志已用于工具页、网页标签及 Codex 插件与 skill。可编辑矢量源文件与导出版本位于 `design/brick-house-logo/`。
 
 基于 **galgame_script_editor 1.12 / GalFlow** 改造的本地项目工序可视化工具。保留原工具的无限画布、卡片拖动、端口连线、分组、便签、小地图、主题与撤销，增加项目工序和 Codex 文件协作。
 

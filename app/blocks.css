@@ -79,6 +79,7 @@ body.pb-resizing aside.sidebar{transition:none}
 @media(max-width:650px){.app-main{--pb-sidebar-width:220px}}
 
 /* A separate rear light leaves theme surfaces, ports and selection intact. */
+.brand .brand-logo{background:transparent!important;box-shadow:none!important;transform:none!important;clip-path:none!important;overflow:visible;padding:0;border:0}.brand-logo img{display:block;width:100%;height:100%;object-fit:contain}
 :root{--pb-live:#ffd36a;--pb-live-text:#ffe4a0;--pb-live-rgb:255,190,65}
 html[data-theme="light"]{--pb-live:#b8780e;--pb-live-text:#784700;--pb-live-rgb:255,177,44}
 .pb-live-indicator.is-live{color:var(--pb-live-text);border-color:var(--pb-live);background:var(--bg-panel)}

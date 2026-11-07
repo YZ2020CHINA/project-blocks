@@ -18,3 +18,5 @@ integration/**/__pycache__/
 .runtime.json
 .initialize.lock
 *.bak
+design/**/assets/export*-preview.json
+design/**/assets/export-preview.json
